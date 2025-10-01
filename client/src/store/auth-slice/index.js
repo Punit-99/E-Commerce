@@ -81,8 +81,11 @@ export const logoutUser = createAsyncThunk(
 
 export const checkAuth = createAsyncThunk(
   "/auth/checkauth",
+  async (_, thunkAPI) => {
+    const state = thunkAPI.getState();
+    const token =
+      state.auth.token || JSON.parse(sessionStorage.getItem("token"));
 
-  async () => {
     const response = await axios.get(
       `${import.meta.env.VITE_REACT_APP_BACKEND_BASEURL}/api/auth/check-auth`,
       {
@@ -119,8 +122,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = null;
         state.isAuthenticated = false;
-        (state.token = action.payload.token),
-          sessionStorage.setItem("token", JSON.stringify(action.payload.token));
+        state.token = action.payload.token;
+        sessionStorage.setItem("token", JSON.stringify(action.payload.token));
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -132,12 +135,21 @@ const authSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
-        console.log(action);
-
         state.isLoading = false;
-        state.user = action.payload.success ? action.payload.user : null;
-        state.isAuthenticated = action.payload.success;
+        if (action.payload.success) {
+          state.user = action.payload.user;
+          state.isAuthenticated = true;
+          state.token = action.payload.token;
+
+          // Store in sessionStorage
+          sessionStorage.setItem("token", JSON.stringify(action.payload.token));
+        } else {
+          state.user = null;
+          state.isAuthenticated = false;
+          state.token = null;
+        }
       })
+
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.user = null;
